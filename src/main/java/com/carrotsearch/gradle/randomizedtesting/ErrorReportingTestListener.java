@@ -221,6 +221,7 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
       public OutputHandler() {
          buffer = new SpillWriter(() -> {
             try {
+               Files.createDirectories(spillDir);
                return Files.createTempFile(spillDir, "spill-", ".tmp");
             } catch (IOException e) {
                throw new UncheckedIOException(e);
