@@ -113,7 +113,11 @@ public class SpillWriter extends Writer {
     if (spill != null) {
       flush();
       try (Reader reader = Files.newBufferedReader(spillPath, StandardCharsets.UTF_8)) {
-        reader.transferTo(writer);
+        char[] buffer = new char[1024 * 32];
+        int len;
+        while ((len = reader.read(buffer)) > 0) {
+          writer.write(buffer, 0, len);
+        }
       }
     } else {
       writer.append(buffer.getBuffer());
