@@ -3,6 +3,7 @@ package com.carrotsearch.gradle.randomizedtesting
 import groovy.transform.CompileStatic
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.reporting.DirectoryReport
 import org.gradle.util.GradleVersion
 
 /**
@@ -26,7 +27,7 @@ class RandomizedTestingPlugin implements Plugin<Project> {
 
     // Disable HTML report generation. The reports are big and slow to generate.
     def testTasks = ext.tasks
-    testTasks*.reports.html.enabled = false
+    testTasks*.reports.html*.required*.set(false)
 
     new GlobalFailOnNoTests(project).apply()
     new HandleOutputs(project).apply()
