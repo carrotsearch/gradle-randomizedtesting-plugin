@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.carrotsearch.gradle.randomizedtesting'
-version = '0.0.4-SNAPSHOT'
+version = '0.0.4'
 def humanName = 'Gradle RandomizedTesting Plugin'
 description = 'Convention defaults and tweaks for Java projects utilizing randomizedtesting libraries'
 
@@ -49,12 +49,12 @@ check {
     dependsOn(tasks.functionalTest)
 }
 
+sourceCompatibility = 8
+targetCompatibility = 8
+
 tasks.withType(JavaCompile) {
   options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
   options.encoding = "UTF-8"
-
-  sourceCompatibility = 8
-  targetCompatibility = 8
 } 
 
 pluginBundle {
