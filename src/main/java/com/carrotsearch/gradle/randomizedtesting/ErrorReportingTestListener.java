@@ -19,7 +19,6 @@ package com.carrotsearch.gradle.randomizedtesting;
 import org.gradle.api.internal.tasks.testing.logging.FullExceptionFormatter;
 import org.gradle.api.internal.tasks.testing.logging.TestExceptionFormatter;
 import org.gradle.api.logging.Logger;
-import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.testing.TestDescriptor;
 import org.gradle.api.tasks.testing.TestListener;
@@ -28,7 +27,6 @@ import org.gradle.api.tasks.testing.TestOutputListener;
 import org.gradle.api.tasks.testing.TestResult;
 import org.gradle.api.tasks.testing.logging.TestLogging;
 
-import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -49,8 +47,7 @@ import java.util.regex.Pattern;
  * Heavily inspired by Elasticsearch's ErrorReportingTestListener (ASL 2.0 licensed).
  */
 public class ErrorReportingTestListener implements TestOutputListener, TestListener {
-   private static final Logger LOGGER = Logging.getLogger(ErrorReportingTestListener.class);
-
+   private final Logger taskLogger;
    private final TestExceptionFormatter formatter;
    private final Map<TestKey, OutputHandler> outputHandlers = new ConcurrentHashMap<>();
    private final Path spillDir;
@@ -59,11 +56,12 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
    private boolean verboseMode;
    private Provider<Boolean> verboseModeProvider;
 
-   public ErrorReportingTestListener(TestLogging testLogging, Path spillDir, Path outputsDir, Provider<Boolean> verboseMode) {
+   public ErrorReportingTestListener(Logger taskLogger, TestLogging testLogging, Path spillDir, Path outputsDir, Provider<Boolean> verboseMode) {
       this.formatter = new FullExceptionFormatter(testLogging);
       this.spillDir = spillDir;
       this.outputsDir = outputsDir;
       this.verboseModeProvider = verboseMode;
+      this.taskLogger = taskLogger;
    }
 
    @Override
@@ -81,6 +79,8 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
       // Noop.
    }
 
+   private final static int WARN_OUTPUT_SIZE_LIMIT = 1024 * 1024 * 10;
+
    @Override
    public void afterSuite(final TestDescriptor suite, TestResult result) {
       if (suite.getParent() == null || suite.getName().startsWith("Gradle")) {
@@ -92,8 +92,8 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
          OutputHandler outputHandler = outputHandlers.get(key);
          if (outputHandler != null) {
             long length = outputHandler.length();
-            if (length > 1024 * 1024 * 10) {
-               LOGGER.warn(String.format(Locale.ROOT, "WARNING: Test %s wrote %,d bytes of output.",
+            if (length > WARN_OUTPUT_SIZE_LIMIT) {
+               taskLogger.warn(String.format(Locale.ROOT, "WARNING: Test %s wrote %,d bytes of output.",
                    suite.getName(),
                    length));
             }
@@ -115,15 +115,13 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
 
             if (!verboseMode) {
                synchronized (this) {
-                  System.out.println("");
-                  System.out.println(suite.getClassName() + " > test suite's output saved to " + outputLog + ", copied below:");
-                  try (BufferedReader reader = Files.newBufferedReader(outputLog, StandardCharsets.UTF_8)) {
-                     char[] buf = new char[1024];
-                     int len;
-                     while ((len = reader.read(buf)) >= 0) {
-                        System.out.print(new String(buf, 0, len));
-                     }
-                     System.out.println();
+                  if (Files.size(outputLog) > WARN_OUTPUT_SIZE_LIMIT) {
+                     taskLogger.warn(suite.getClassName() + " > test suite's output saved to " + outputLog
+                         + ", too large to echo to the logger (" + Files.size(outputLog) + " bytes).");
+                  } else {
+                     taskLogger.warn(suite.getClassName() + " > test suite's output saved to " + outputLog
+                         + ", and copied below:");
+                     taskLogger.warn(Files.readString(outputLog, StandardCharsets.UTF_8));
                   }
                }
             }
@@ -136,7 +134,7 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
             try {
                handler.close();
             } catch (IOException e) {
-               LOGGER.error("Failed to close output handler for: " + key, e);
+               taskLogger.error("Failed to close output handler for: " + key, e);
             }
          }
       }

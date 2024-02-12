@@ -72,7 +72,7 @@ class HandleOutputs {
       logging.showStackTraces = true
       logging.stackTraceFilters.clear()
 
-      def listener = new ErrorReportingTestListener(logging, spillDir, testOutputsDir, verboseModeProvider)
+      def listener = new ErrorReportingTestListener(test.logger, logging, spillDir, testOutputsDir, verboseModeProvider)
       test.addTestOutputListener(listener)
       test.addTestListener(listener)
     }

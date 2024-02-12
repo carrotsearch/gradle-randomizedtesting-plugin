@@ -49,8 +49,10 @@ check {
     dependsOn(tasks.functionalTest)
 }
 
-sourceCompatibility = 8
-targetCompatibility = 8
+java {
+    sourceCompatibility = 11
+    targetCompatibility = 11
+}
 
 tasks.withType(JavaCompile) {
   options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
